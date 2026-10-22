@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Календарь жизни в неделях</title>
+<style>
+  :root{
+    --bg:#0b0f14;
+    --panel:#0d131b;
+    --card:#10161f;
+    --line:#1e2733;
+    --text:#e6edf3;
+    --muted:#8b949e;
+    --accent:#2f81f7;
+    --now:#f5b942;
+    --future:#182130;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1100px 600px at 15% -15%, #16202c 0%, #0b0f14 60%) no-repeat fixed,
+      var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI",Roboto,-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:36px 20px 70px;
+    min-height:100vh;
+  }
+  .wrap{max-width:980px;margin:0 auto}
+
+  /* ---------- шапка ---------- */
+  h1{
+    font-size:clamp(21px,3vw,32px);
+    font-weight:700;
+    letter-spacing:-.02em;
+    margin:0 0 10px;
+  }
+  .sub{color:var(--muted);font-size:14px;margin:0 0 26px;line-height:1.5}
+  .sub b{color:#c9d4e0;font-weight:600}
+
+  /* ---------- контролы ---------- */
+  .controls{
+    display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end;
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 18px;
+    margin-bottom:18px;
+  }
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{
+    font-size:11px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.07em;font-weight:600;
+  }
+  input{
+    background:#0f151d;
+    border:1px solid #263140;
+    color:var(--text);
+    border-radius:9px;
+    padding:9px 12px;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,129,247,.18)}
+  input[type=date]{color-scheme:dark;min-width:170px}
+  input[type=number]{width:110px}
+
+  /* ---------- карточки со статистикой ---------- */
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+    gap:12px;
+    margin-bottom:22px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px 15px;
+  }
+  .card .k{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
+    color:#7d8590;font-weight:600;margin-bottom:9px;
+  }
+  .card .v{
+    font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1;
+    font-variant-numeric:tabular-nums;
+  }
+  .card .v small{font-size:12.5px;font-weight:500;color:var(--muted);margin-left:5px;letter-spacing:0}
+  .bar{height:5px;border-radius:3px;background:#1b2431;margin-top:11px;overflow:hidden}
+  .bar i{
+    display:block;height:100%;border-radius:3px;
+    background:linear-gradient(90deg,#2f81f7,#56d4dd);
+    transition:width .45s cubic-bezier(.4,0,.2,1);
+  }
+  .bar.gold i{background:linear-gradient(90deg,#f5b942,#f97316)}
+
+  /* ---------- сетка ---------- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px 18px 16px;
+    max-width:760px;
+    margin:0 auto;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:26px repeat(52, minmax(0,1fr));
+    gap:2px;
+  }
+  .rowlabel{
+    font-size:9px;line-height:1;color:#5f6b7a;
+    display:flex;align-items:center;justify-content:flex-end;
+    padding-right:4px;overflow:hidden;
+    font-variant-numeric:tabular-nums;
+  }
+  .cell{
+    aspect-ratio:1/1;
+    border-radius:2px;
+    background:var(--future);
+    transition:transform .12s ease, background .12s ease;
+  }
+  .cell.past{background:var(--accent)}
+  .cell.now{
+    background:var(--now);
+    animation:pulse 1.9s ease-in-out infinite;
+  }
+  .cell:hover{
+    transform:scale(1.9);
+    border-radius:3px;
+    position:relative;
+    z-index:3;
+  }
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(245,185,66,.75)}
+    50%    {box-shadow:0 0 0 3px rgba(245,185,66,0)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .cell.now{animation:none}
+    .cell,.bar i{transition:none}
+  }
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:8px 20px;
+    margin-top:16px;font-size:12px;color:var(--muted);
+  }
+  .legend span{display:flex;align-items:center;gap:7px}
+  .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .sw.past{background:var(--accent)}
+  .sw.now{background:var(--now)}
+  .sw.future{background:var(--future);border:1px solid #263140}
+
+  .foot{
+    text-align:center;color:#5f6b7a;font-size:12px;
+    margin:26px 0 0;
+  }
+
+  /* ---------- подсказка ---------- */
+  .tip{
+    position:fixed;left:0;top:0;
+    pointer-events:none;z-index:60;
+    background:#101820;
+    border:1px solid #2a3644;
+    border-radius:10px;
+    padding:8px 11px;
+    font-size:12px;line-height:1.5;
+    color:var(--text);
+    box-shadow:0 12px 34px rgba(0,0,0,.55);
+    white-space:nowrap;
+    opacity:0;
+    transform:translateY(4px);
+    transition:opacity .12s ease, transform .12s ease;
+  }
+  .tip.on{opacity:1;transform:translateY(0)}
+  .tip .t{font-weight:700;margin-bottom:2px}
+  .tip .m{color:var(--muted);font-size:11.5px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Календарь жизни в неделях</h1>
+    <p class="sub">Каждая клетка — одна неделя. <span id="todayLabel"></span></p>
+  </header>
+
+  <section class="controls">
+    <div class="field">
+      <label for="birth">Дата рождения</label>
+      <input type="date" id="birth" value="1988-07-20">
+    </div>
+    <div class="field">
+      <label for="years">Горизонт, лет</label>
+      <input type="number" id="years" value="80" min="1" max="120" step="1">
+    </div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="panel">
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i class="sw past"></i>прожито</span>
+      <span><i class="sw now"></i>текущая неделя</span>
+      <span><i class="sw future"></i>впереди</span>
+    </div>
+  </section>
+
+  <p class="foot">Все расчёты выполняются прямо в браузере — данные никуда не отправляются.</p>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var MS_DAY = 86400000;
+  var $ = function(id){ return document.getElementById(id); };
+
+  var birthEl = $("birth");
+  var yearsEl = $("years");
+  var gridEl  = $("grid");
+  var statsEl = $("stats");
+  var tipEl   = $("tip");
+  var todayEl = $("todayLabel");
+
+  var nf = new Intl.NumberFormat("ru-RU");
+  var pad = function(n){ return String(n).padStart(2, "0"); };
+
+  var cells = [];
+  var builtYears = 0;
+
+  var today = new Date();
+  today.setHours(0,0,0,0);
+
+  function dstr(d){
+    return pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + d.getFullYear();
+  }
+  todayEl.textContent = "Сегодня " + dstr(today) + ".";
+
+  function parseDate(v){
+    if(!v) return null;
+    var p = v.split("-").map(Number);
+    if(p.length !== 3 || !p[0] || !p[1] || !p[2]) return null;
+    var d = new Date(p[0], p[1]-1, p[2]);
+    if(d.getFullYear() !== p[0] || d.getMonth() !== p[1]-1 || d.getDate() !== p[2]) return null;
+    return d;
+  }
+
+  function addDays(d, n){
+    var x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+
+  function anniversary(birth, n){
+    var d = new Date(birth);
+    d.setFullYear(birth.getFullYear() + n);
+    return d;
+  }
+
+  /* номер недели по ISO-8601 (аналог ISOWEEKNUM в Excel) */
+  function isoWeek(date){
+    var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var dn = (d.getDay() + 6) % 7;              // понедельник = 0
+    d.setDate(d.getDate() - dn + 3);            // четверг этой недели
+    var ft = new Date(d.getFullYear(), 0, 4);
+    ft.setDate(ft.getDate() - ((ft.getDay() + 6) % 7) + 3);
+    return 1 + Math.round((d - ft) / (7 * MS_DAY));
+  }
+
+  /* ---------- построение сетки ---------- */
+  function buildGrid(years){
+    gridEl.innerHTML = "";
+    var frag = document.createDocumentFragment();
+    cells = new Array(years * 52);
+
+    for(var y = 0; y < years; y++){
+      var lab = document.createElement("div");
+      lab.className = "rowlabel";
+      if((y + 1) % 5 === 0) lab.textContent = y + 1;
+      frag.appendChild(lab);
+
+      for(var w = 0; w < 52; w++){
+        var i = y * 52 + w;
+        var c = document.createElement("div");
+        c.className = "cell";
+        c.dataset.i = i;
+        cells[i] = c;
+        frag.appendChild(c);
+      }
+    }
+    gridEl.appendChild(frag);
+    builtYears = years;
+  }
+
+  /* ---------- отрисовка состояния ---------- */
+  function render(){
+    var years = Math.min(120, Math.max(1, Math.round(Number(yearsEl.value) || 80)));
+    if(years !== builtYears) buildGrid(years);
+    var total = years * 52;
+
+    var birth = parseDate(birthEl.value);
+
+    if(!birth){
+      for(var k = 0; k < cells.length; k++) cells[k].className = "cell future";
+      statsEl.innerHTML =
+        '<div class="card" style="grid-column:1/-1">' +
+          '<div class="k">Укажите дату рождения</div>' +
+          '<div class="v" style="font-size:15px;font-weight:500;color:#8b949e">Календарь построится автоматически</div>' +
+        '</div>';
+      return;
+    }
+
+    var daysLived  = Math.floor((today - birth) / MS_DAY);
+    var weeksLived = Math.max(0, Math.floor(daysLived / 7));
+
+    /* клетки */
+    for(var i = 0; i < total; i++){
+      var c = cells[i];
+      if(!c) continue;
+      var st = "future";
+      if(daysLived >= 0){
+        if(i < weeksLived)       st = "past";
+        else if(i === weeksLived) st = "now";
+      }
+      c.className = "cell " + st;
+    }
+
+    /* возраст */
+    var age = 0;
+    if(daysLived >= 0){
+      age = today.getFullYear() - birth.getFullYear();
+      var md = today.getMonth() - birth.getMonth();
+      if(md < 0 || (md === 0 && today.getDate() < birth.getDate())) age--;
+      if(age < 0) age = 0;
+    }
+
+    /* недели внутри текущего года жизни */
+    var weeksLeftInYear = 0;
+    if(daysLived >= 0){
+      var lastB = anniversary(birth, age);
+      var nextB = anniversary(birth, age + 1);
+      var daysIn   = Math.round((nextB - lastB) / MS_DAY);
+      var daysInto = Math.floor((today - lastB) / MS_DAY);
+      if(daysInto < 0) daysInto = 0;
+      if(daysInto > daysIn) daysInto = daysIn;
+      weeksLeftInYear = Math.max(0, 52 - Math.floor(daysInto / 7));
+    }
+
+    var pctLived = total ? (weeksLived / total) * 100 : 0;
+    var remaining = Math.max(0, total - weeksLived);
+    var pct40 = Math.min(100, (weeksLived / 2080) * 100);
+    var weekNow  = isoWeek(today);
+    var weekBorn = isoWeek(birth);
+
+    statsEl.innerHTML =
+      card("Прожито недель",
+           nf.format(weeksLived) + "<small>из " + nf.format(total) + "</small>") +
+
+      card("Осталось недель",
+           nf.format(remaining) + "<small>до " + years + " лет</small>") +
+
+      card("Прожито жизни",
+           pctLived.toFixed(1) + "<small>%</small>",
+           '<div class="bar"><i style="width:' + Math.min(100, pctLived).toFixed(1) + '%"></i></div>') +
+
+      card("Прожито дней",
+           nf.format(Math.max(0, daysLived)) +
+           "<small>≈ " + (Math.max(0, daysLived) / 365.2425).toFixed(1) + " лет</small>") +
+
+      card("Прожито до 40 лет",
+           pct40.toFixed(1) + "<small>%</small>",
+           '<div class="bar"><i style="width:' + pct40.toFixed(1) + '%"></i></div>') +
+
+      card("Неделя года",
+           weekNow + "<small>родился на " + weekBorn + "-й</small>") +
+
+      card("До конца года жизни",
+           weeksLeftInYear + "<small>из 52</small>",
+           '<div class="bar gold"><i style="width:' + (weeksLeftInYear / 52 * 100).toFixed(1) + '%"></i></div>');
+  }
+
+  function card(k, v, extra){
+    return '<div class="card"><div class="k">' + k + '</div>' +
+           '<div class="v">' + v + '</div>' + (extra || "") + '</div>';
+  }
+
+  /* ---------- всплывающая подсказка ---------- */
+  function showTip(cell, x, y){
+    var birth = parseDate(birthEl.value);
+    if(!birth){ hideTip(); return; }
+
+    var i = Number(cell.dataset.i);
+    var start = addDays(birth, i * 7);
+    var end   = addDays(start, 6);
+    var year  = Math.floor(i / 52) + 1;
+    var week  = (i % 52) + 1;
+
+    var state = cell.classList.contains("past") ? "прожита" :
+                cell.classList.contains("now")  ? "идёт сейчас" : "впереди";
+
+    tipEl.innerHTML =
+      '<div class="t">Неделя ' + nf.format(i + 1) + '</div>' +
+      '<div>' + dstr(start) + ' — ' + dstr(end) + '</div>' +
+      '<div class="m">' + year + '-й год жизни · ' + week + '-я неделя · ' + state + '</div>';
+
+    tipEl.classList.add("on");
+
+    var r = tipEl.getBoundingClientRect();
+    var left = x + 14, top = y + 14;
+    if(left + r.width  > window.innerWidth  - 8) left = x - r.width  - 14;
+    if(top  + r.height > window.innerHeight - 8) top  = y - r.height - 14;
+    if(left < 8) left = 8;
+    if(top  < 8) top  = 8;
+
+    tipEl.style.left = left + "px";
+    tipEl.style.top  = top  + "px";
+  }
+
+  function hideTip(){ tipEl.classList.remove("on"); }
+
+  /* ---------- события ---------- */
+  birthEl.addEventListener("input", function(){
+    render();
+    try{ localStorage.setItem("lifeCalendarBirth", birthEl.value); }catch(e){}
+  });
+
+  yearsEl.addEventListener("input", render);
+
+  gridEl.addEventListener("mousemove", function(e){
+    var cell = e.target.closest ? e.target.closest(".cell") : null;
+    if(!cell){ hideTip(); return; }
+    showTip(cell, e.clientX, e.clientY);
+  });
+
+  gridEl.addEventListener("mouseleave", hideTip);
+  window.addEventListener("scroll", hideTip, true);
+
+  /* ---------- запуск ---------- */
+  try{
+    var saved = localStorage.getItem("lifeCalendarBirth");
+    if(saved && parseDate(saved)) birthEl.value = saved;
+  }catch(e){}
+
+  render();
+})();
+</script>
+</body>
+</html>
